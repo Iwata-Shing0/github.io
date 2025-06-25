@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>【評価テスト版】NBG業務用酒類知識テスト</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" xintegrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoVBL5gI9kLmbG4dFVxBMVyJWgmgig==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" xintegrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans JP', sans-serif; scroll-behavior: smooth; }
+        .print-only { display: none; }
+        @media print {
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .no-print { display: none; }
+            .print-only { display: block; }
+            .results-item { page-break-inside: avoid; }
+            .bg-green-100 { background-color: #dcfce7 !important; }
+            .bg-red-100 { background-color: #fee2e2 !important; }
+            .border-green-300 { border-color: #86efac !important; }
+            .border-red-300 { border-color: #fca5a5 !important; }
+        }
+        .timer-sticky { position: -webkit-sticky; position: sticky; top: 0; }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-800">
+
+    <div id="app" class="w-full max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
+        
+        <!-- Welcome Screen -->
+        <div id="welcomeScreen">
+            <div class="bg-white rounded-xl shadow-lg p-8 md:p-12 text-center">
+                <h1 class="text-3xl md:text-4xl font-bold text-stone-800 mb-4">NBG業務用酒類知識 評価テスト</h1>
+                <p class="text-stone-600 mb-8">これはあなたの知識を評価するための正式なテストです。</p>
+                <div class="max-w-md mx-auto">
+                    <div class="mb-6">
+                        <label for="userName" class="block text-left text-sm font-medium text-stone-700 mb-2">氏名を入力してください</label>
+                        <input type="text" id="userName" class="w-full px-4 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="例：山田 太郎">
+                        <p id="nameError" class="text-red-500 text-sm mt-2 hidden">氏名を入力してください。</p>
+                    </div>
+                    <div class="text-left bg-blue-50 border border-blue-200 p-4 rounded-lg mb-8">
+                        <h2 class="font-bold text-blue-800 mb-2">テストの注意事項</h2>
+                        <ul class="list-disc list-inside text-blue-700 space-y-1 text-sm">
+                            <li>全50問、すべて4択問題です。</li>
+                            <li>制限時間は<b class="font-bold">25分</b>です。</li>
+                            <li>時間内に「完了」ボタンを押してください。</li>
+                            <li>時間切れになると、その時点の回答で自動的に採点されます。</li>
+                            <li>一度「完了」すると、再回答はできません。</li>
+                        </ul>
+                    </div>
+                    <button id="startBtn" class="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors text-lg">
+                        テストを開始する
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Screen -->
+        <div id="testScreen" class="hidden">
+            <div id="timer-container" class="timer-sticky bg-white/80 backdrop-blur-sm p-4 mb-6 rounded-lg shadow-md border z-10">
+                 <div class="flex justify-between items-center">
+                     <div>
+                         <p class="text-sm text-stone-600">受験者</p>
+                         <p id="displayUserName" class="font-bold text-lg"></p>
+                     </div>
+                     <div>
+                         <p class="text-sm text-stone-600 text-right">残り時間</p>
+                         <p id="timer" class="font-bold text-2xl text-red-600">25:00</p>
+                     </div>
+                 </div>
+            </div>
+
+            <div id="questionsContainer" class="bg-white rounded-xl shadow-lg p-8 md:p-10 space-y-10">
+                <!-- Questions will be injected here -->
+            </div>
+            <div class="mt-10 text-center">
+                <button id="submitBtn" class="bg-green-600 text-white font-bold py-4 px-10 rounded-lg hover:bg-green-700 transition-colors text-xl">
+                    完了して結果を見る
+                </button>
+            </div>
+        </div>
+
+        <!-- Results Screen -->
+        <div id="resultsScreen" class="hidden">
+            <div id="resultsContent" class="bg-white rounded-xl shadow-lg p-8 md:p-12">
+                <div id="action-buttons" class="no-print mb-8 flex flex-wrap justify-between items-center gap-4">
+                    <h1 class="text-3xl font-bold text-stone-800">テスト結果</h1>
+                    <div class="flex flex-wrap gap-2">
+                        <!-- ★★★ 報告ボタン ★★★ -->
+                        <button id="reportBtn" class="bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                            結果を報告
+                        </button>
+                        <button id="pdfBtn" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">
+                            PDFで保存
+                        </button>
+                        <!-- ★★★ 画像保存ボタンを削除 ★★★ -->
+                    </div>
+                </div>
+
+                <div class="print-only mb-8">
+                    <h1 class="text-3xl font-bold text-stone-800">業務用酒類知識 評価テスト 結果</h1>
+                </div>
+
+                <div id="summary-section" class="bg-stone-100 p-6 rounded-lg mb-8 border">
+                     <div class="text-center">
+                         <p class="text-lg">受験者: <b id="resultsUserName" class="text-2xl ml-2"></b></p>
+                         <p class="mt-2 text-lg">点数: <b id="resultsScore" class="text-4xl ml-2 text-blue-600"></b><span class="text-2xl text-stone-600">/ 50</span></p>
+                     </div>
+                     <div class="text-center sm:text-right text-xs text-stone-500 mt-4">
+                         <p id="testTimes"></p>
+                     </div>
+                </div>
+                
+                <div id="resultsContainer" class="space-y-6">
+                    <!-- Result breakdown will be injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ★★★ 画像表示用オーバーレイを削除 ★★★ -->
+
+    <script>
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        // ★ ステップ1でコピーしたGoogle Apps ScriptのウェブアプリURLをここに貼り付けてください ★
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxTpoOUf9_hLkFzHZbD7fzVreIT0o-rIfmrB_bXyaKqorqdCVtLiR1o6bGAvOd2mXzR/exec';
+
+
+        const quizData = [
+            { question: 'スコッチのブレンデッドウイスキーにおいて、香味の骨格となるモルトウイスキー以外に、ベースとして最も多く使われる原料は何ですか？', options: ['大麦麦芽（モルト）のみ', 'ライ麦', 'トウモロコシなどの穀物', 'サトウキビ'], correct: 2, explanation: 'ブレンデッドウイスキーは、個性豊かなモルトウイスキーと、トウモロコシや小麦などを原料とするクリアで穏やかな味わいのグレーンウイスキーをブレンドして造られます。一般的にブレンドの7割以上をグレーンウイスキーが占めるため、最も多く使われる原料はトウモロコシなどの穀物となります。' },
+            { question: 'カクテルの分量を計るためにバーテンダーが使う、両端がカップ状になった金属製の計量器具は何ですか？', options: ['シェーカー', 'ミキシンググラス', 'ストレーナー', 'メジャーカップ'], correct: 3, explanation: 'メジャーカップ（ジガーとも呼ばれます）は、カクテルのレシピの正確性を保つために液体材料の分量を計る器具です。多くは30mlと45mlなど、両端で異なる容量を計れるようになっています。' },
+            { question: 'ジンの定義において、必ず使用しなければならないと法律で定められている植物（ボタニカル）は何ですか？', options: ['コリアンダーシード', 'アンジェリカルート', 'ジュニパーベリー', 'レモンピール'], correct: 2, explanation: 'ジンの国際的な定義として、ジュニパーベリー（セイヨウネズの実）で香り付けすることが定められています。この爽やかな針葉樹のような香りがジンの核となります。' },
+            { question: 'ウイスキーと常温の水を1対1の割合で混ぜ合わせる、ウイスキーの持つ香りや味わいを最も引き出すとされる飲み方は何ですか？', options: ['ハーフロック', 'ミスト', 'トゥワイスアップ', '水割り'], correct: 2, explanation: 'トゥワイスアップは、ウイスキーと同量の常温の水を加える飲み方です。アルコール度数が30%程度に下がることで香りが開きやすくなり、ブレンダーがテイスティングする際にも用いられる方法です。' },
+            { question: 'テキーラの主原料となる植物として正しいものはどれですか？', options: ['アロエ', 'アガベ', 'サボテン', 'ユッカ'], correct: 1, explanation: 'テキーラは竜舌蘭（りゅうぜつらん）の一種である「アガベ・アスール・テキラーナ（ブルーアガベ）」を主原料とします。' },
+            { question: 'アメリカンウイスキーの一種である「バーボン」の法律上の定義で、熟成に使用する樽の条件として正しいものはどれですか？', options: ['シェリー酒の熟成に使用した古樽', '内側を焦がしたオークの新樽', 'ワインの熟成に使用した古樽', '特に規定はない'], correct: 1, explanation: 'バーボン法では、熟成に「内側を焦がしたオークの新樽」を使用することが義務付けられています。これにより、バニラやキャラメルのような甘く豊かな香味がウイスキーに与えられます。' },
+            { question: '単一の蒸溜所で、大麦麦芽のみを原料にポットスチルで蒸溜されたウイスキーを何と呼びますか？', options: ['ブレンデッドウイスキー', 'シングルグレーンウイスキー', 'シングルモルトウイスキー', 'シングルカスクウイスキー'], correct: 2, explanation: '「シングル」は「単一の蒸溜所」、「モルト」は「大麦麦芽」を意味します。つまり、一つの蒸溜所で造られたモルトウイスキーのみを瓶詰めしたものがシングルモルトです。' },
+            { question: 'スコッチウイスキーの産地「アイラ島」のモルトが持つ、薬品や煙のような独特の香りの主な源となるものは何ですか？', options: ['熟成に使う樽の種類', '蒸溜所の潮風', '仕込み水に含まれるミネラル', '麦芽乾燥時に焚く泥炭'], correct: 3, explanation: 'アイラ島では、ウイスキーの原料である麦芽を乾燥させる際に、島で採掘される泥炭（ピート）を燃料として使用します。この泥炭が燃える際の煙が麦芽に焚きしめられることで、ヨードのような独特のスモーキーな香りが生まれます。' },
+            { question: 'フランス・ボルドーのメドック格付け第1級に分類される、いわゆる「5大シャトー」に含まれないシャトーは次のうちどれですか？', options: ['シャトー・ラフィット・ロスチャイルド', 'シャトー・マルゴー', 'シャトー・ペトリュス', 'シャトー・ムートン・ロスチャイルド'], correct: 2, explanation: 'シャトー・ペトリュスはボルドーのポムロール地区を代表する偉大なシャトーですが、メドック地区の1855年の格付けには含まれていません。5大シャトーはラフィット、ラトゥール、マルゴー、オー・ブリオン、ムートンです。' },
+            { question: 'フランスのAOC（原産地統制名称）で保護されたブランデー「コニャック」の原料として、最も多く使用されるブドウ品種は何ですか？', options: ['シャルドネ', 'ユニ・ブラン', 'ピノ・ノワール', 'ソーヴィニヨン・ブラン'], correct: 1, explanation: '世界で最も有名なブランデーであるコニャックは、主にユニ・ブラン種のブドウを原料とし、単式蒸溜器で2回蒸溜することでエレガントな味わいを生み出します。' },
+            { question: 'ウイスキーの製造工程で発生する「天使の分け前（エンジェルズ・シェア）」とは、具体的にどのような現象を指しますか？', options: ['樽に染み込むことで失われる原酒のこと', '蒸溜時に最初に出てくる、品質の良くない部分のこと', '樽での熟成中に、原酒が蒸発して自然に減少すること', '瓶詰め業者（ボトラーズ）が買い付ける樽のこと'], correct: 2, explanation: '天使の分け前は、樽での熟成中に、樽材を通してウイスキーの水分やアルコール分が蒸発し、量が減っていく現象を詩的に表現した言葉です。これにより香味の凝縮が進みます。' },
+            { question: 'ウイスキーの熟成において、バーボン樽がもたらす典型的な香味として正しいものはどれですか？', options: ['レーズン、ドライフルーツ、スパイス', 'バニラ、ハチミツ、ココナッツ', 'ヨード、スモーク、潮', '青リンゴ、洋梨、シトラス'], correct: 1, explanation: 'バーボン樽に使われるアメリカンホワイトオークには、バニラの香り成分である「バニリン」や、ココナッツのような甘い香りを持つ「ラクトン」が豊富に含まれています。' },
+            { question: 'テキーラの熟成度合いを示す「アネホ（Añejo）」とは、どのくらいの期間、樽熟成されたものですか？', options: ['熟成なし、または2ヶ月未満', '2ヶ月以上1年未満', '1年以上3年未満', '3年以上'], correct: 2, explanation: 'テキーラの熟成期間による分類は、ブランコ（熟成なし〜2ヶ月）、レポサド（2ヶ月〜1年）、アネホ（1年〜3年）、エクストラ・アネホ（3年以上）と定められています。' },
+            { question: 'サントリーのシングルモルトウイスキー「白州」の味わいの特徴として、最も適切なものはどれですか？', options: ['濃厚なシェリー樽由来の甘さと、ドライフルーツのような味わい', '薬品のような強いピート香と、潮の香り', '若草やミントを思わせる、爽やかで軽快なスモーキーフレーバー', 'キャラメルやトフィーのような、重厚で甘い味わい'], correct: 2, explanation: '白州は「森の蒸溜所」で造られ、その特徴は若葉やミントのような爽快感と、ほのかなスモーキーさ（軽快なピート香）が調和したクリーンな味わいです。' },
+            { question: 'アイルランドで造られるウイスキーの伝統的な製法の特徴として、最も一般的なものはどれですか？', options: ['未発芽大麦のみを原料として使用する', 'ポットスチルによる3回蒸溜', 'バーボン樽で最低5年間熟成させる', 'ライ麦を51%以上使用する'], correct: 1, explanation: 'スコッチウイスキーの2回蒸溜に対し、伝統的なアイリッシュウイスキーは大型のポットスチルで3回蒸溜を行います。これにより、雑味が少なく、軽やかでスムーズな口当たりのスピリッツが生まれます。「未発芽大麦の使用」はシングルポットスチルウイスキーの特徴であり、すべてのアイリッシュに当てはまるわけではありません。' },
+            { question: '「ロンドン・ドライ・ジン」の製法上の定義として正しいものはどれですか？', options: ['ロンドンで製造されなければならない', '蒸溜後に水以外の添加が許されていない', '樽で1年以上熟成させなければならない', 'ジュニパーベリー以外のボタニカル使用は禁止'], correct: 1, explanation: '「ロンドン・ドライ」は産地名ではなく、製法のスタイルを指します。蒸溜後はアルコール度数調整のための加水以外、いかなる添加物も認められていません。' },
+            { question: 'ウイスキーのラベルに「ノンチルフィルタード」と表記されている場合、その製法に関する最も正確な説明はどれですか？', options: ['冷却することで香味成分を凝縮させてから瓶詰めする製法', 'ウイスキー本来の香味成分を残すため、冷却して澱（おり）を取り除く工程を省く製法', '樽から出した原酒に一切加水せず、そのまま瓶詰めする製法', '活性炭フィルターを使って、雑味を徹底的に取り除く製法'], correct: 1, explanation: 'ノンチルフィルタードは、冷却すると白濁する原因となる香味成分（高級脂肪酸エステルなど）をあえて除去せず、ウイスキー本来の味わいを残す製法です。' },
+            { question: 'カクテル技法の「シェーク」が「ステア」と比べて得られる効果として、間違っているものはどれですか？', options: ['材料を急激に冷却する効果', '卵白など、混ざりにくい材料を均一に混合する効果', '酒の香味を最大限に引き出し、クリアに仕上げる効果', '液体に空気を含ませ、口当たりをまろやかにする効果'], correct: 2, explanation: 'シェークは空気を含ませることで口当たりをまろやかにしますが、細かい氷の粒が混ざり液体が濁るため、クリアな仕上がりにはなりません。酒の香味を最大限に引き出しクリアに仕上げるのはステアの効果です。' },
+            { question: 'アイルランド独自のウイスキー「シングルポットスチルウイスキー」の定義として、正しいものはどれですか？', options: ['単一の蒸溜所で、単一のポットスチル（蒸溜釜）のみを使って造られる', '単一の蒸溜所で、発芽させた大麦麦芽と未発芽の大麦を両方とも原料に使う', '複数の蒸溜所のポットスチルウイスキーをブレンドして造られる', 'ポットスチルで蒸溜後、必ずアイルランド産のオーク樽で熟成させる'], correct: 1, explanation: 'シングルポットスチルウイスキーは、単一の蒸溜所で、発芽大麦（モルト）と未発芽大麦を両方とも原料として使い、ポットスチルで3回蒸溜するのが伝統的な製法です。未発芽大麦がもたらすオイリーでスパイシーな風味が特徴です。' },
+            { question: '日本の蒸留酒である焼酎に関する記述として、正しいものはどれですか？', options: ['連続式蒸溜で造られたものを「甲類焼酎」、単式蒸溜で造られたものを「乙類焼酎」と分類する', '法律により、主原料は米または麦のみと定められている', '乙類焼酎は、無味無臭に近く、主にチューハイなどのベースに使われる', 'アルコール度数は、ウイスキーと同様に40%以上なければならない'], correct: 0, explanation: '酒税法上、連続式蒸溜機で造られアルコール分36%未満のものが「甲類」、単式蒸溜機で造られアルコール分45%以下のものが「乙類（本格焼酎）」と分類されます。' },
+            { question: 'ウイスキーのラベルに「カスクストレングス（Cask Strength）」とある場合、どのような状態で瓶詰めされたものですか？', options: ['加水してアルコール度数を40%に調整した', '複数の樽の原酒をブレンドした', '樽から出した原酒に加水せず、そのままの度数で瓶詰めした', '冷却ろ過を入念に行った'], correct: 2, explanation: 'カスクストレングスは「樽出しの強さ」を意味し、加水を一切行わずに瓶詰めしたものです。そのためアルコール度数が高く、パワフルな味わいが特徴です。' },
+            { question: '次のスコッチウイスキーの銘柄のうち、「スペイサイド」に属するものはどれですか？', options: ['グレンドロナック', 'タリスカー', 'ザ・グレンリベット', 'グレンモーレンジィ'], correct: 2, explanation: 'ザ・グレンリベットはスペイサイド地方を代表する銘柄です。グレンドロナックとグレンモーレンジィはハイランド、タリスカーはアイランズに属します。' },
+            { question: '日本酒の特定名称酒「純米酒」の原料として、法律上認められているものの組み合わせはどれですか？', options: ['米、米麹、水、醸造アルコール', '米、米麹、水', '米、水、糖類、酸味料', '米麹、水、醸造アルコール'], correct: 1, explanation: '「純米」と名の付く日本酒は、その名の通り、米と米麹、そして水だけで造られます。醸造アルコールを添加したものは本醸造酒などに分類されます。' },
+            { question: 'ウイスキーの熟成樽において、「ファーストフィル」や「セカンドフィル」といった表現は何を意味していますか？', options: ['樽のサイズや容量のこと', '樽を構成する木材の種類のこと', '樽の内側の焼き加減（チャーリング）の度合いのこと', 'その樽がウイスキーの熟成に使われた回数のこと'], correct: 3, explanation: 'ファーストフィルは新樽、または他の酒類（シェリーやバーボン）の熟成に一度使われた樽に、初めてウイスキーを詰めることを指します。セカンドフィルはそれを払い出した後に再度詰めることです。回数を重ねるごとに樽から抽出される成分は穏やかになります。' },
+            { question: 'ウイスキーを構成する原酒の比率（穀物配合率）のこと、特にアメリカンウイスキーにおいて何と呼びますか？', options: ['レシピ', 'マッシュビル', 'スペック', 'アッサンブラージュ'], correct: 1, explanation: 'マッシュビル（Mash Bill）は、発酵前の糖化工程で使われる穀物の配合表のことで、ウイスキーの味わいの骨格を決定します。' },
+            { question: '複数の蒸溜所の「モルトウイスキー」だけを混ぜ合わせたウイスキーの分類は何ですか？', options: ['ブレンデッドウイスキー', 'シングルモルトウイスキー', 'ブレンデッドモルトウイスキー', 'シングルグレーンウイスキー'], correct: 2, explanation: '異なる蒸溜所のモルトウイスキー原酒のみをブレンドしたものを指します。かつては「ヴァッテッドモルト」とも呼ばれていました。' },
+            { question: '蒸溜所から樽ごと原酒を買い付け、独自に熟成・瓶詰めして販売する業者を何と呼びますか？', options: ['インポーター', 'サプライヤー', 'ボトラーズ', 'ディストリビューター'], correct: 2, explanation: '独立瓶詰業者（Independent Bottler）とも呼ばれ、蒸溜所の公式ボトルとは異なる視点でウイスキーをリリースします。' },
+            { question: 'ウイスキーの熟成樽の一つである「バレル」の定義として、最も一般的なものはどれですか？', options: ['シェリー酒の輸送に使われる約500リットルの大型の樽', 'アメリカンウイスキーの熟成に主に使われる約180〜200リットルの樽', 'スコッチの熟成に標準的に使われ、リフィル樽が多い約250リットルの樽', 'ワインの熟成に主に使われるフレンチオーク製の約225リットルの樽'], correct: 1, explanation: 'バレルは、バーボンウイスキーの熟成に主に使用される、容量約180〜200リットルの樽を指すのが一般的です。シェリー樽は約500Lで「バット」、250Lは「ホッグスヘッド」、225Lは「バリック」と呼ばれます。' },
+            { question: 'スコットランドの法律で定められている、スコッチウイスキーの最低熟成年数は何年ですか？', options: ['2年', '3年', '5年', '規定はない'], correct: 1, explanation: 'スコッチウイスキーと名乗るためには、スコットランド国内でオーク樽で最低3年間の熟成が法律で義務付けられています。' },
+            { question: 'アメリカのテネシーウイスキーがバーボンと区別されるための工程として、最も正確な記述はどれですか？', options: ['テネシー州法により、バーボンの定義を満たした上で、樽詰め前にサトウカエデの木炭でろ過する工程（チャコール・メローイング製法）が義務付けられている', '連邦法により、バーボンと名乗ることはできず、必ず「テネシーウイスキー」と表記しなければならない', '原料の51%以上がライ麦でなければならず、バーボンとは主原料が異なる', 'ケンタッキー州以外で造られたバーボンスタイルのウイスキーは、すべてテネシーウイスキーと呼ばれる'], correct: 0, explanation: '2013年に制定されたテネシー州法により、テネシーウイスキーの定義が法制化されました。バーボンとしての条件を満たし、かつ、チャコール・メローイングを行うことが必須です。' },
+            { question: 'ウイスキーの熟成において、シェリー樽がもたらす典型的な香味として正しいものはどれですか？', options: ['レーズン、ドライフルーツ、スパイス', 'バニラ、ハチミツ、ココナッツ', 'ヨード、スモーク、潮', '青リンゴ、洋梨、シトラス'], correct: 0, explanation: 'シェリー酒の熟成に使われた樽でウイスキーを熟成させると、凝縮した果実味（レーズン等）やスパイス、ナッツのような複雑な香味が付与されます。' },
+            { question: 'イタリアで造られる蒸溜酒「グラッパ」の定義として正しいものはどれですか？', options: ['ブドウ果汁を直接蒸溜して造られる', 'ワインを蒸溜して造られるブランデーの一種である', 'ワインの醸造で残ったブドウの皮や種などを蒸溜して造られる', '必ず木樽で長期間熟成させなければならない'], correct: 2, explanation: 'グラッパは、ワインを造る際にブドウを圧搾した後に残る皮、種、果梗（果物の軸）などの固形物（ヴィナッチャと呼ばれる）を発酵させ、蒸溜して造られます。' },
+            { question: 'ラムの定義や製法についての記述として、最も適切なものはどれですか？', options: ['原料は必ずサトウキビの搾り汁でなければならない', '必ずカリブ海周辺で生産されなければならない', 'サトウキビの糖蜜または搾り汁を原料とする蒸溜酒である', 'ジンやウォッカと同様に、樽での熟成は一切行われない'], correct: 2, explanation: 'ラムは、サトウキビの副産物である糖蜜（モラセス）、または搾り汁（シュガーケインジュース）を発酵・蒸溜して造られます。産地の規定はなく、熟成させないホワイトラムから長期熟成のダークラムまで多様です。' },
+            { question: 'カナディアンウイスキーの伝統的な製法の特徴として、最も適切なものはどれですか？', options: ['全ての原料を一度に糖化・発酵させ、力強い香味の単一スピリッツを製造する', '軽やかな「ベースウイスキー」と風味豊かな「フレーバリングウイスキー」を別々に製造し、蒸溜後にブレンドする', 'スコッチ同様にピートを強く焚きしめ、スモーキーな個性を出すのが主流である', 'アイリッシュ同様にポットスチルで3回蒸溜し、非常に滑らかな酒質を追求する'], correct: 1, explanation: 'カナディアンウイスキーは、別々に造られたベースウイスキーとフレーバリングウイスキーをブレンドして完成します。この製法が、ライトでスムーズながらも風味豊かな味わいを生み出しています。' },
+            { question: 'シングルモルトウイスキーの「ザ・マッカラン」「ボウモア」「ラフロイグ」や、バーボンの「メーカーズマーク」を日本国内で取り扱う正規代理店はどこですか？', options: ['キリンビール', 'アサヒビール', 'サントリー', 'MHD モエ・ヘネシー・ディアジオ'], correct: 2, explanation: 'これらは全て、サントリーが正規代理店として日本市場での販売を手掛けているブランドです。' },
+            { question: 'ウイスキーの香味成分の一つである「エステル」は、主にどの製造工程で生成され、どのような香りをもたらしますか？', options: ['製麦工程で生成され、スモーキーな香りをもたらす', '発酵工程で生成され、リンゴや洋梨のようなフルーティーな香りをもたらす', '蒸溜工程で生成され、穀物様の香りをもたらす', '熟成工程で生成され、バニラ様の香りをもたらす'], correct: 1, explanation: 'エステルは、主に発酵中に酵母がアルコールと酸を反応させることによって生成される化合物で、ウイスキーの持つ華やかでフルーティーな香りの多くはこのエステルに由来します。熟成中にもエステルの生成や分解は起こり、香味は複雑に変化します。' },
+            { question: 'スコッチウイスキーの味わいを表現する際に使われる「フェノール値（ppm）」とは、何を数値化したものですか？', options: ['アルコール度数の高さ', '樽由来のタンニンの量', 'エステル由来のフルーティーさの度合い', 'ピート由来のスモーキーさの度合い'], correct: 3, explanation: 'フェノール値は、製麦工程で麦芽にどれだけピート由来のフェノール類が付着したかを示す指標で、スモーキーさの目安となります。' },
+            { question: 'ビールの主原料として、ドイツの「ビール純粋令」で定められている4つの原料として正しい組み合わせはどれですか？', options: ['麦芽、ホップ、水、米', '麦芽、ホップ、水、酵母', '麦芽、ホップ、水、小麦', '麦芽、ホップ、酵母、糖類'], correct: 1, explanation: '1516年に制定されたビール純粋令では、ビールの原料を「麦芽・ホップ・水」のみと定めていました。後に酵母の役割が科学的に解明され、酵母も原料として加えられました。' },
+            { question: 'シングルモルトウイスキーの銘柄「スプリングバンク」が、他の多くの蒸溜所と一線を画す最大の特徴は何ですか？', options: ['麦芽製造（フロアモルティング）から瓶詰めまで、全ての工程を蒸溜所内で行っている', 'スコットランドで唯一、4回蒸溜を行っている', '冷却ろ過（チルフィルター）を2回行う', '熟成にスコットランド産のオーク樽しか使用しない'], correct: 0, explanation: 'スプリングバンクは、製麦から熟成、瓶詰めに至るまで、ウイスキー造りの全工程を自社で完結させている、スコットランドで唯一の蒸溜所です。' },
+            { question: 'シャンパン（シャンパーニュ）の製造工程に関する記述として、正しいものはどれですか？', options: ['瓶内二次発酵後、澱引き（デゴルジュマン）の前に、最終的な甘さを調整するためにリキュールを添加する', '主要なブドウ品種はシャルドネ、ピノ・ノワール、ピノ・ムニエの3種類である', 'イタリアのプロセッコと同じく、大きなタンクで二次発酵を行う「シャルマ方式」が主流である', '法律により、最低でも5年間は瓶内での熟成が義務付けられている'], correct: 1, explanation: 'シャンパーニュ地方で認められている主要3品種がシャルドネ、ピノ・ノワール、ピノ・ムニエです。甘さを調整するドザージュは澱引きの後に行われ、瓶内二次発酵（伝統方式）が義務付けられています。' },
+            { question: 'ニッカウヰスキーの余市蒸溜所の特徴として、最も適切なものはどれですか？', options: ['南アルプスの軟水を使用し、軽快でクリーンなウイスキーを製造している', '複数の異なる酵母を使い分け、多彩な原酒を造り出している', '世界でも稀な、ポットスチルの加熱に石炭直火蒸溜を採用し、力強く重厚な酒質を生み出している', '伝統的な3回蒸溜を行い、非常にスムーズでオイリーな酒質を特徴とする'], correct: 2, explanation: '余市蒸溜所は、創業以来の伝統である石炭直火蒸溜を守り続けています。この加熱方法により、ポットスチル内部で温度のムラが生まれ、力強く、香ばしく、重厚な味わいのウイスキーが生まれます。' },
+            { question: 'ブドウを原料とする蒸溜酒「ピスコ」に関する記述として、正しいものはどれですか？', options: ['ペルーでのみ生産が許可されている', 'サトウキビの搾り汁を主原料とする', 'ペルーやチリで主に生産され、ブドウ果汁を発酵・蒸溜して造られる', '必ず樽で長期間熟成させなければならない'], correct: 2, explanation: 'ピスコは、主に南米のペルーとチリで造られるブランデーの一種です。ブドウ果汁を発酵・蒸溜して造られ、特にペルーピスコは熟成させない（またはガラス容器などで休ませる）クリアな味わいが特徴です。' },
+            { question: 'ブレンデッドスコッチの「シーバスリーガル」や、シングルモルト「ザ・グレンリベット」などを日本国内で取り扱う企業はどこですか？', options: ['ディアジオ・ジャパン', 'バカルディジャパン', 'アサヒビール', 'ペルノ・リカール・ジャパン'], correct: 3, explanation: 'これらはすべてフランスのペもルノ・リカール社が所有するブランドであり、日本法人であるペルノ・リカール・ジャパンが正規代理店として取り扱っています。' },
+            { question: 'NHK朝の連続テレビ小説「マッサン」のモデルとなり、山崎蒸溜所の初代所長を務めた人物は誰ですか？', options: ['鳥井信治郎', '竹鶴政孝', '佐治敬三', 'リタ竹鶴'], correct: 1, explanation: '竹鶴政孝は、サントリーの創業者である鳥井信治郎に招かれ、山崎蒸溜所の初代所長を務めました。その後、独立してニッカウヰスキーを創設しました。彼と妻リタの生涯がドラマ「マッサン」のモデルとなりました。' },
+            { question: 'シングルモルトの「グレンモーレンジィ」「アードベッグ」や、シャンパンの「ヴーヴ・クリコ」などを日本国内で取り扱う正規代理店はどこですか？', options: ['サントリー', 'キリンビール', 'MHD モエ・ヘネシー・ディアジオ', 'レミー・コアントロー・ジャパン'], correct: 2, explanation: 'MHDは、LVMHとディアジオという二大グループの合弁会社として、両社の主要ブランドを日本で展開しています。' },
+            { question: 'オロロソ・シェリー樽で熟成させたウイスキーの特徴として、適切でないものはどれですか？', options: ['「ザ・マッカラン」に代表される、レーズンやドライフルーツの凝縮した甘い香味', '「グレンドロナック」のように、熟成によりナッツや革製品、ビターチョコレートの香味が付与される', '「アベラワー」のように、主に酸化熟成させたシェリーであるため、樽由来のタンニンが強く、力強い味わいになる', '「ボウモア12年」のように、潮気や薬品を思わせるシャープで塩辛い風味を与える'], correct: 3, explanation: 'オロロソ樽はウイスキーに濃厚で甘美な香味を与えます。ボウモアの潮や薬品のような香りは、ピートに由来するものであり、樽のタイプとは直接関係ありません。' },
+            { question: 'ペドロ・ヒメネスシェリー樽で熟成させたウイスキーの特徴として、適切でないものはどれですか？', options: ['「ラガヴーリンDE」のように、極めて濃厚な甘さと、黒蜜やシロップのような凝縮感を与える', '「グレンファークラス」などの銘柄の風味の要因となる、デザートのように甘美でリッチな味わい', '「タリスカー10年」の黒胡椒のようなスパイシーさの主な要因となる', '「キルホーマンPXシェリーカスク」のように、ウイスキーの色合いを非常に濃くする'], correct: 2, explanation: 'ペドロ・ヒメネス樽はウイスキーに極めて濃厚な甘さを与えます。タリスカーのスパイシーさは、その蒸溜所の酒質に由来する特徴であり、PX樽によるものではありません。' },
+            { question: '世界的な評価を受けるシングルモルトウイスキー「カバラン（KAVALAN）」の生産国はどこですか？', options: ['インド', '韓国', '香港', '台湾'], correct: 3, explanation: 'カバランは台湾のウイスキーメーカー「金車（King Car）」が製造するシングルモルトです。亜熱帯気候を活かした熟成の速さが特徴で、数々の国際的な賞を受賞しています。' },
+            { question: '次のスコッチウイスキーの銘柄のうち「ローランド」に属するものはどれですか？', options: ['アードベッグ', 'タリスカー', 'グレンキンチー', 'グレンモーレンジィ'], correct: 2, explanation: 'グレンキンチーは「ローランドの首都」エディンバラの近郊に位置する、ローランド地方を代表する蒸溜所の一つです。アードベッグはアイラ島、タリスカーはアイランズ（スカイ島）、グレンモーレンジィはハイランドの銘柄です。' },
+            { question: 'サントリーのシングルモルトウイスキー「山崎12年」に関する記述として、最も適切なものはどれですか？', options: ['主にアイラ島から輸入したピートを強く焚いた麦芽を使用している', '日本で初めて、熟成にシェリー樽のみを使用したシングルモルトである', 'ホワイトオーク樽原酒を主体に、シェリー樽やミズナラ樽の原酒をヴァッティングしている', '法律により、原料の51%以上に国産の大麦麦芽を使用することが定められている'], correct: 2, explanation: '山崎12年は、様々なタイプの原酒をブレンドすることで、その複雑で華やかな香味を生み出しています。力強いホワイトオーク樽原酒を軸に、シェリー樽原酒の甘みやミズナラ樽原酒のオリエンタルな香りが重ねられています。' }
+        ];
+
+        const state = {
+            userName: '',
+            userAnswers: {},
+            timerInterval: null,
+            startTime: null,
+            endTime: null,
+        };
+        
+        const welcomeScreen = document.getElementById('welcomeScreen');
+        const testScreen = document.getElementById('testScreen');
+        const resultsScreen = document.getElementById('resultsScreen');
+        const startBtn = document.getElementById('startBtn');
+        const submitBtn = document.getElementById('submitBtn');
+        const pdfBtn = document.getElementById('pdfBtn');
+        const questionsContainer = document.getElementById('questionsContainer');
+        const userNameInput = document.getElementById('userName');
+        
+        // ★★★ 報告ボタンの要素を取得 ★★★
+        const reportBtn = document.getElementById('reportBtn');
+
+
+        function startTest() {
+            const name = userNameInput.value.trim();
+            if (name === '') {
+                document.getElementById('nameError').classList.remove('hidden');
+                return;
+            }
+            document.getElementById('nameError').classList.add('hidden');
+            
+            state.userName = name;
+            state.startTime = new Date();
+            document.getElementById('displayUserName').innerText = name;
+            
+            welcomeScreen.classList.add('hidden');
+            testScreen.classList.remove('hidden');
+            
+            renderQuestions();
+            startTimer(1500); // 25 minutes
+        }
+
+        function renderQuestions() {
+            let html = '';
+            quizData.forEach((q, index) => {
+                html += `
+                    <div class="py-4 border-b border-stone-200">
+                        <p class="font-bold mb-4">${index + 1}. ${q.question}</p>
+                        <div class="space-y-2">
+                            ${q.options.map((option, i) => `
+                                <label class="flex items-center p-3 rounded-lg hover:bg-stone-100 cursor-pointer">
+                                    <input type="radio" name="question-${index}" value="${i}" class="mr-3 h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span>${option}</span>
+                                </label>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+            questionsContainer.innerHTML = html;
+        }
+
+        function startTimer(duration) {
+            let timer = duration, minutes, seconds;
+            const timerEl = document.getElementById('timer');
+
+            state.timerInterval = setInterval(() => {
+                minutes = parseInt(timer / 60, 10);
+                seconds = parseInt(timer % 60, 10);
+
+                minutes = minutes < 10 ? "0" + minutes : minutes;
+                seconds = seconds < 10 ? "0" + seconds : seconds;
+
+                timerEl.textContent = minutes + ":" + seconds;
+
+                if (--timer < 0) {
+                    clearInterval(state.timerInterval);
+                    submitTest(true); // Forced submission
+                }
+            }, 1000);
+        }
+
+        function submitTest(isForced = false) {
+            if (!isForced && !confirm('テストを完了します。よろしいですか？（完了後は修正できません）')) {
+                return;
+            }
+
+            clearInterval(state.timerInterval);
+            state.endTime = new Date();
+            
+            quizData.forEach((_, index) => {
+                const selected = document.querySelector(`input[name="question-${index}"]:checked`);
+                state.userAnswers[index] = selected ? parseInt(selected.value) : -1;
+            });
+            
+            testScreen.classList.add('hidden');
+            resultsScreen.classList.remove('hidden');
+            renderResults();
+        }
+
+        function formatDateTime(date) {
+            if (!date) return '';
+            return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${date.getHours()}時${String(date.getMinutes()).padStart(2, '0')}分`;
+        }
+
+        function renderResults() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            let score = 0;
+            let resultsHtml = '';
+            
+            quizData.forEach((q, index) => {
+                const userAnswerIndex = state.userAnswers[index];
+                const isCorrect = userAnswerIndex === q.correct;
+                if (isCorrect) {
+                    score++;
+                }
+
+                resultsHtml += `
+                    <div class="p-4 rounded-lg border results-item ${isCorrect ? 'bg-green-100 border-green-300' : 'bg-red-100 border-red-300'}">
+                        <p class="font-bold mb-2">${index + 1}. ${q.question}</p>
+                        <div class="text-sm space-y-2">
+                            <p>あなたの回答: <span class="font-semibold">${userAnswerIndex > -1 ? q.options[userAnswerIndex] : '未回答'}</span> 
+                                <span class="font-bold ml-4">${isCorrect ? '<span class="text-green-600">✔ 正解</span>' : '<span class="text-red-600">✖ 不正解</span>'}</span>
+                            </p>
+                            ${!isCorrect ? `<p>正しい回答: <span class="font-semibold text-green-800">${q.options[q.correct]}</span></p>` : ''}
+                            <div class="pt-2">
+                               <p class="font-semibold text-stone-700">解説:</p>
+                               <p class="text-stone-600">${q.explanation}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            document.getElementById('resultsUserName').innerText = state.userName;
+            document.getElementById('resultsScore').innerText = score;
+            document.getElementById('resultsContainer').innerHTML = resultsHtml;
+            document.getElementById('testTimes').innerText = `開始: ${formatDateTime(state.startTime)} | 終了: ${formatDateTime(state.endTime)}`;
+            
+            // ★★★ 結果表示完了後、自動で報告処理を呼び出す ★★★
+            sendResultsToSheet();
+        }
+
+        async function generatePdf() {
+            const btn = document.getElementById('pdfBtn');
+            if (!btn || btn.disabled) return;
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="animate-pulse">生成中...</span>';
+
+            const element = document.getElementById('resultsContent');
+            const options = {
+                margin:       [0.5, 0.5, 0.5, 0.5],
+                filename:     `${state.userName}_酒類知識テスト結果.pdf`,
+                image:        { type: 'jpeg', quality: 0.90 },
+                html2canvas:  { scale: 1.5, useCORS: true, logging: false },
+                jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+            };
+
+            try {
+                await html2pdf().set(options).from(element).save();
+            } catch (error) {
+                console.error("PDF generation failed:", error);
+                alert("PDFの生成に失敗しました。");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+        
+        // ★★★ 画像保存関連の関数を削除 ★★★
+
+        // ★★★ 結果をスプレッドシートに送信する関数 ★★★
+        async function sendResultsToSheet() {
+            const btn = document.getElementById('reportBtn');
+            if (GAS_WEB_APP_URL === 'ここにウェブアプリのURLを貼り付け') {
+                alert('報告機能が設定されていません。管理者に連絡してください。');
+                return;
+            }
+            if (!btn || btn.disabled) return;
+
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="animate-pulse">送信中...</span>';
+
+            const score = document.getElementById('resultsScore').innerText;
+            const data = {
+                name: state.userName,
+                score: parseInt(score, 10)
+            };
+
+            try {
+                const response = await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    cache: 'no-cache',
+                    headers: {},
+                    redirect: 'follow',
+                    body: JSON.stringify(data) 
+                });
+                
+                btn.innerHTML = '報告完了 ✔';
+                // 自動送信のため、alertはコメントアウトし、ユーザー操作を不要にします
+                // alert('結果を報告しました。'); 
+
+            } catch (error) {
+                console.error('Error sending data to Google Sheet:', error);
+                btn.innerHTML = '報告失敗 ✖';
+                alert('報告に失敗しました。ネットワーク接続を確認して、もう一度お試しください。');
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                }, 3000);
+            }
+        }
+        
+        startBtn.addEventListener('click', startTest);
+        submitBtn.addEventListener('click', () => submitTest(false));
+        pdfBtn.addEventListener('click', generatePdf);
+
+        // ★★★ 報告ボタンのクリックイベントリスナーは手動操作用として残しても良いですが、
+        //     自動実行が主目的なので、必須ではありません。今回はそのまま残します。★★★
+        reportBtn.addEventListener('click', sendResultsToSheet);
+
+    </script>
+</body>
+</html>
